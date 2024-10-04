@@ -66,6 +66,8 @@ bool Message_ShouldAdvanceSilent(PlayState* play);
 void ShrinkWindow_Letterbox_SetSizeTarget(s32 target);
 s32 ShrinkWindow_Letterbox_GetSizeTarget(void);
 
+extern bool skip_dsot_cutscene;
+
 RECOMP_PATCH void Message_Update(PlayState* play) {
     static u8 D_801D0468 = 0;
     MessageContext* msgCtx = &play->msgCtx;
@@ -459,7 +461,13 @@ RECOMP_PATCH void Message_Update(PlayState* play) {
                         if (msgCtx->choiceIndex == 0) {
                             Audio_PlaySfx_MessageDecide();
 
-                            play->msgCtx.ocarinaMode = OCARINA_MODE_APPLY_DOUBLE_SOT;
+                            // @mod_use_export_var skip_dsot_cutscene: Skip DSoT cutscene if other mods enable it.
+                            if (skip_dsot_cutscene) {
+                                play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+                                dsot_advance_hour(play);
+                            } else {
+                                play->msgCtx.ocarinaMode = OCARINA_MODE_APPLY_DOUBLE_SOT;
+                            }
                             gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
                         } else {
                             Audio_PlaySfx_MessageCancel();
