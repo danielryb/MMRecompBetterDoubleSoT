@@ -1,5 +1,7 @@
 #include "better_double_sot.h"
 
+#include "modding.h"
+
 static void dsot_load_day_number_texture(PlayState* play, s32 day);
 static void dsot_actor_fixes(PlayState* play);
 
