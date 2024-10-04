@@ -89,7 +89,7 @@ s32 func_800B7298(PlayState* play, Actor* csActor, u8 csAction); // Player_SetCs
 void EnTest6_SharedSoTCutscene(EnTest6* this, PlayState* play);
 
 extern CutsceneData sDoubleSoTCsCamData[];
-static Vec3f sSubCamUp;
+static Vec3f sSubCamUp = { 0.0f, 1.0f, 0.0f };
 
 struct SoTCsAmmoDrops;
 
@@ -260,11 +260,7 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
     } else if (this->timer < 16) {
         subCamId = CutsceneManager_GetCurrentSubCamId(play->playerCsIds[PLAYER_CS_ID_SONG_WARP]);
 
-        // @mod Automatic relocation doesn't seem to work properly here.
-        // Play_SetCameraAtEyeUp(play, subCamId, &this->subCamAt, &this->subCamEye, &sSubCamUp);
-        Vec3f* sSubCamUp_ptr = KaleidoManager_GetRamAddr(&sSubCamUp);
-        Play_SetCameraAtEyeUp(play, subCamId, &this->subCamAt, &this->subCamEye, sSubCamUp_ptr);
-
+        Play_SetCameraAtEyeUp(play, subCamId, &this->subCamAt, &this->subCamEye, &sSubCamUp);
         Play_SetCameraFov(play, subCamId, this->subCamFov);
         Play_SetCameraRoll(play, subCamId, 0);
     }
