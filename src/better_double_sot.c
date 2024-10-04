@@ -2,7 +2,10 @@
 
 #include "modding.h"
 
-static void dsot_load_day_number_texture(PlayState* play, s32 day);
+void dsot_load_day_number_texture(PlayState* play, s32 day);
+
+static void dsot_rain_fix(PlayState* play);
+static void dsot_bgm_fix(PlayState* play);
 static void dsot_actor_fixes(PlayState* play);
 
 bool skip_dsot_cutscene = false;
@@ -11,7 +14,6 @@ bool skip_dsot_cutscene = false;
 RECOMP_EXPORT void dsot_set_skip_dsot_cutscene(bool new_val) {
     skip_dsot_cutscene = new_val;
 }
-
 u8 choiceHour;
 
 void dsot_init_hour_selection(PlayState* play) {
@@ -164,7 +166,13 @@ void dsot_advance_hour(PlayState* play) {
     gSaveContext.save.time = CLOCK_TIME(choiceHour, 0);
     gSaveContext.skyboxTime = CURRENT_TIME;
 
-    // Instantly enable/disable rain on day 2.
+    dsot_rain_fix(play);
+    dsot_bgm_fix(play);
+    dsot_actor_fixes(play);
+}
+
+// Instantly enable/disable rain on day 2.
+static void dsot_rain_fix(PlayState* play) {
     if ((CURRENT_DAY == 2) && (Environment_GetStormState(play) != STORM_STATE_OFF)) {
         if ((CURRENT_TIME >= CLOCK_TIME(8, 0)) && (CURRENT_TIME < CLOCK_TIME(18, 00))) {
             gWeatherMode = WEATHER_MODE_RAIN;
@@ -180,8 +188,10 @@ void dsot_advance_hour(PlayState* play) {
             Environment_StopStormNatureAmbience(play);
         }
     }
+}
 
-    // Play music/ambience.
+// Play music/ambience.
+static void dsot_bgm_fix(PlayState* play) {
     play->envCtx.timeSeqState = TIMESEQ_FADE_DAY_BGM;
 
     if ((CURRENT_TIME >= CLOCK_TIME(18, 0)) || (CURRENT_TIME <= CLOCK_TIME(6,0))) {
@@ -209,8 +219,6 @@ void dsot_advance_hour(PlayState* play) {
         Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_4 << 4 | AMBIENCE_CHANNEL_CRITTER_5, 1, 1);
         play->envCtx.timeSeqState = TIMESEQ_DAY_DELAY;
     }
-
-    dsot_actor_fixes(play);
 }
 
 #include "overlays/actors/ovl_En_Test4/z_en_test4.h"
