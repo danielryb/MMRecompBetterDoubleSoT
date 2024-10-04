@@ -1,11 +1,19 @@
 #include "better_double_sot.h"
 
+#include "modding.h"
+
 void dsot_load_day_number_texture(PlayState* play, s32 day);
 
 static void dsot_rain_fix(PlayState* play);
 static void dsot_bgm_fix(PlayState* play);
 static void dsot_actor_fixes(PlayState* play);
 
+bool skip_dsot_cutscene = false;
+
+// @mod_export void dsot_set_skip_dsot_cutscene(bool new_val): Set whether the DSoT cutscene should be skipped.
+RECOMP_EXPORT void dsot_set_skip_dsot_cutscene(bool new_val) {
+    skip_dsot_cutscene = new_val;
+}
 u8 choiceHour;
 
 void dsot_init_hour_selection(PlayState* play) {
