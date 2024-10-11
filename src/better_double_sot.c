@@ -14,7 +14,8 @@ bool skip_dsot_cutscene = false;
 RECOMP_EXPORT void dsot_set_skip_dsot_cutscene(bool new_val) {
     skip_dsot_cutscene = new_val;
 }
-u8 choiceHour;
+
+static u8 choiceHour;
 
 void dsot_init_hour_selection(PlayState* play) {
     choiceHour = (u16)(TIME_TO_HOURS_F(CURRENT_TIME - 1)) + 1;
@@ -232,25 +233,24 @@ static void dsot_actor_fixes(PlayState* play) {
     s32 category;
     Actor* actor;
     Player* player = GET_PLAYER(play);
-    u32* categoryFreezeMaskP;
     ActorListEntry* entry;
 
     ActorContext* actorCtx = &play->actorCtx;
 
     for (category = 0, entry = actorCtx->actorLists; category < ACTORCAT_MAX;
-         entry++, categoryFreezeMaskP++, category++) {
+         entry++, category++) {
         actor = entry->first;
 
         for (actor = entry->first; actor != NULL; actor = actor->next) {
             switch(actor->id) {
                 case ACTOR_EN_TEST4:
-                    dsot_ObjEnTest4_fix(actor, play);
+                    dsot_ObjEnTest4_fix((EnTest4*)actor, play);
                     break;
                 case ACTOR_OBJ_TOKEI_STEP:
-                    dsot_ObjTokeiStep_fix(actor, play);
+                    dsot_ObjTokeiStep_fix((ObjTokeiStep*)actor, play);
                     break;
                 case ACTOR_OBJ_TOKEIDAI:
-                    dsot_ObjTokeidai_fix(actor, play);
+                    dsot_ObjTokeidai_fix((ObjTokeidai*)actor, play);
                     break;
             }
         }
@@ -365,7 +365,7 @@ void dsot_ObjTokeidai_fix(ObjTokeidai* this, PlayState* play) {
         case OBJ_TOKEIDAI_TYPE_COUNTERWEIGHT_CLOCK_TOWN:
             if (PAST_MIDNIGHT && (this->actionFunc == ObjTokeidai_Counterweight_Idle)) {
                 this->actor.shape.rot.y = 0;
-                ObjTokeidai_Init(this, play);
+                ObjTokeidai_Init((Actor*)this, play);
             }
             break;
 
@@ -374,7 +374,7 @@ void dsot_ObjTokeidai_fix(ObjTokeidai* this, PlayState* play) {
             if (PAST_MIDNIGHT && (this->actionFunc == ObjTokeidai_ExteriorGear_Idle)) {
                 dsot_ObjTokeidai_update_clock(this, 0, 0);
                 this->actor.draw = ObjTokeidai_ExteriorGear_Draw;
-                ObjTokeidai_Init(this, play);
+                ObjTokeidai_Init((Actor*)this, play);
             } else {
                 dsot_ObjTokeidai_update_clock(this, currentHour, currentMinute);
             }
@@ -385,7 +385,7 @@ void dsot_ObjTokeidai_fix(ObjTokeidai* this, PlayState* play) {
             if (PAST_MIDNIGHT && (this->actionFunc == ObjTokeidai_TowerClock_Idle)) {
                 dsot_ObjTokeidai_update_clock(this, 0, 0);
                 this->actor.draw = ObjTokeidai_Clock_Draw;
-                ObjTokeidai_Init(this, play);
+                ObjTokeidai_Init((Actor*)this, play);
             } else {
                 dsot_ObjTokeidai_update_clock(this, currentHour, currentMinute);
             }

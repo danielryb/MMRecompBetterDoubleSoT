@@ -120,11 +120,6 @@ RECOMP_PATCH void Message_DrawTextBox(PlayState* play, Gfx** gfxP) {
         gSPPopMatrix(gfx++, G_MTX_MODELVIEW);
     }
 
-    // @mod Draw DSoT hour selection clock.
-    if (play->msgCtx.ocarinaMode == OCARINA_MODE_PROCESS_DOUBLE_TIME) {
-        dsot_draw_clock(play);
-    }
-
     // Draw treble clef
     if (msgCtx->textBoxType == TEXTBOX_TYPE_3) {
         gDPPipeSync(gfx++);
@@ -145,6 +140,11 @@ RECOMP_PATCH void Message_DrawTextBox(PlayState* play, Gfx** gfxP) {
     gEXPopMatrixGroup(gfx++, G_MTX_MODELVIEW);
     gEXPopMatrixGroup(gfx++, G_MTX_PROJECTION);
     gSPPerspNormalize(gfx++, play->view.perspNorm);
+
+    // @mod Draw DSoT hour selection clock.
+    if (play->msgCtx.ocarinaMode == OCARINA_MODE_PROCESS_DOUBLE_TIME) {
+        dsot_draw_clock(play);
+    }
 
     *gfxP = gfx++;
 }
