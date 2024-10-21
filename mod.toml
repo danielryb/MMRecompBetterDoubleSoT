@@ -8,7 +8,7 @@
 id = "better_double_sot"
 
 # Version of this mod.
-version = "0.0.1"
+version = "1.0.0"
 
 # Authors of this mod.
 authors = [ "danielryb" ]
@@ -21,8 +21,7 @@ minimum_recomp_version = "1.2.0"
 
 # Dependency mods. Each entry is the mod's ID and then an optional minimum version of the dependency mod.
 dependencies = [
-# Example dependency:
-#    "modname:1.0.0"
+    "mm_message_hooks:1.0.0"
 ]
 
 # Native libraries (e.g. DLLs) and the functions they export.
