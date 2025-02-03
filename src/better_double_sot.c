@@ -115,8 +115,9 @@ void dsot_load_day_number_texture(PlayState* play, s32 day) {
         i = 0;
     }
 
-    DmaMgr_SendRequest0((void*)(play->interfaceCtx.doActionSegment + 0x780),
-                        SEGMENT_ROM_START_OFFSET(week_static, i * 0x510), 0x510);
+    DmaMgr_RequestSync(play->interfaceCtx.doActionSegment + DO_ACTION_OFFSET_DAY_NUMBER,
+                       SEGMENT_ROM_START(week_static) + i * WEEK_STATIC_TEX_SIZE, WEEK_STATIC_TEX_SIZE);
+
 }
 
 #include "overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope.h"
@@ -202,7 +203,7 @@ static void dsot_bgm_fix(PlayState* play) {
     }
 
     if ((CURRENT_TIME >= CLOCK_TIME(18, 0)) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
-        Audio_PlayAmbience(play->sequenceCtx.ambienceId);
+        Audio_PlayAmbience(play->sceneSequences.ambienceId);
         Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_0, 1, 1);
         play->envCtx.timeSeqState = TIMESEQ_NIGHT_DELAY;
     }
@@ -261,15 +262,15 @@ static void dsot_actor_fixes(PlayState* play) {
 
 // z_obj_en_test_4
 
-void func_80A42198(EnTest4* this); // EnTest4_GetBellTimeOnDay3
+void EnTest4_GetBellTimeOnDay3(EnTest4* this);
 
 void dsot_ObjEnTest4_fix(EnTest4* this, PlayState* play) {
-    this->unk_146 = CURRENT_TIME; // EnTest4->prevTime
-    this->lastBellTime = CURRENT_TIME; // EnTest4->prevBellTime
+    this->prevTime = CURRENT_TIME;
+    this->prevBellTime = CURRENT_TIME;
 
     // Change daytime to night manually if necessary.
-    if (((this->csIdIndex = THREEDAY_DAYTIME_DAY) && (CURRENT_TIME > CLOCK_TIME(18, 0))) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
-        this->csIdIndex = THREEDAY_DAYTIME_NIGHT; // EnTest4->daytimeIndex
+    if (((this->daytimeIndex = THREEDAY_DAYTIME_DAY) && (CURRENT_TIME > CLOCK_TIME(18, 0))) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
+        this->daytimeIndex = THREEDAY_DAYTIME_NIGHT;
         // Re-spawn the setup actors.
         play->numSetupActors = -play->numSetupActors;
     }
@@ -277,7 +278,7 @@ void dsot_ObjEnTest4_fix(EnTest4* this, PlayState* play) {
     // Setup next bell time.
     if (CURRENT_DAY == 3) {
         gSaveContext.save.time--;
-        func_80A42198(this);
+        EnTest4_GetBellTimeOnDay3(this);
         gSaveContext.save.time++;
     }
 }

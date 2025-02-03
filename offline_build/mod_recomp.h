@@ -9,7 +9,7 @@
 #if defined(_WIN32)
 #define RECOMP_EXPORT __declspec(dllexport)
 #else
-#define RECOMP_EXPORT __attribute__((visibility(default)))
+#define RECOMP_EXPORT __attribute__((visibility("default")))
 #endif
 
 // Compiler definition to disable inter-procedural optimization, allowing multiple functions to be in a single file without breaking interposition.
@@ -91,7 +91,7 @@ static inline gpr do_lwl(uint8_t* rdram, gpr initial_value, gpr offset, gpr reg)
 static inline gpr do_lwr(uint8_t* rdram, gpr initial_value, gpr offset, gpr reg) {
     // Calculate the overall address
     gpr address = (offset + reg);
-    
+
     // Load the aligned word
     gpr word_address = address & ~0x3;
     uint32_t loaded_value = MEM_W(0, word_address);
@@ -137,7 +137,7 @@ static inline void do_swr(uint8_t* rdram, gpr offset, gpr reg, gpr val) {
 
 #define S32(val) \
     ((int32_t)(val))
-    
+
 #define U32(val) \
     ((uint32_t)(val))
 
@@ -262,14 +262,13 @@ typedef struct {
 extern "C" {
 #endif
 
-void cop0_status_write(recomp_context* ctx, gpr value);
-gpr cop0_status_read(recomp_context* ctx);
-void switch_error(const char* func, uint32_t vram, uint32_t jtbl);
-void do_break(uint32_t vram);
-
 typedef void (recomp_func_t)(uint8_t* rdram, recomp_context* ctx);
 
-RECOMP_EXPORT recomp_func_t* (*get_function)(int32_t vram);
+extern RECOMP_EXPORT recomp_func_t* (*get_function)(int32_t vram);
+extern RECOMP_EXPORT void (*cop0_status_write)(recomp_context* ctx, gpr value);
+extern RECOMP_EXPORT gpr (*cop0_status_read)(recomp_context* ctx);
+extern RECOMP_EXPORT void (*switch_error)(const char* func, uint32_t vram, uint32_t jtbl);
+extern RECOMP_EXPORT void (*do_break)(uint32_t vram);
 
 #define LOOKUP_FUNC(val) \
     get_function((int32_t)(val))

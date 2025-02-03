@@ -29,7 +29,7 @@ RECOMP_PATCH void Environment_UpdateTimeBasedSequence(PlayState* play) {
 
             case TIMESEQ_EARLY_NIGHT_CRITTERS:
                 if (play->envCtx.precipitation[PRECIP_RAIN_CUR] < 9) {
-                    Audio_PlayAmbience(play->sequenceCtx.ambienceId);
+                    Audio_PlayAmbience(play->sceneSequences.ambienceId);
                     Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_0, 1, 1);
                 }
                 play->envCtx.timeSeqState++;
@@ -169,7 +169,7 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
         Environment_LerpDiffuseColor(play, &sDoubleSoTCsDiffuseColor, 1.0f);
         Environment_LerpFogColor(play, &sDoubleSoTCsFogColor, 1.0f);
         Environment_LerpFog(play, sDoubleSoTCsFogNear, sDoubleSoTCsZFar, 1.0f);
-        play->unk_18844 = true;
+        play->soaringCsOrSoTCsPlaying = true;
     }
 
     if (this->timer == 15) {
@@ -177,7 +177,7 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
         Environment_LerpDiffuseColor(play, &sDoubleSoTCsDiffuseColor, 0.0f);
         Environment_LerpFogColor(play, &sDoubleSoTCsFogColor, 0.0f);
         Environment_LerpFog(play, sDoubleSoTCsFogNear, sDoubleSoTCsZFar, 0.0f);
-        play->unk_18844 = false;
+        play->soaringCsOrSoTCsPlaying = false;
     }
 
     if (this->screenFillAlpha >= 20) {
@@ -185,10 +185,10 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
         Environment_LerpDiffuseColor(play, &sDoubleSoTCsDiffuseColor, this->doubleSoTEnvLerp);
         Environment_LerpFogColor(play, &sDoubleSoTCsFogColor, this->doubleSoTEnvLerp);
         Environment_LerpFog(play, sDoubleSoTCsFogNear, sDoubleSoTCsZFar, this->doubleSoTEnvLerp);
-        play->unk_18844 = false;
+        play->soaringCsOrSoTCsPlaying = false;
     }
 
-    Actor_PlaySfx_FlaggedCentered1(&player->actor, NA_SE_PL_FLYING_AIR - SFX_FLAG);
+    Actor_PlaySfx_Flagged2(&player->actor, NA_SE_PL_FLYING_AIR - SFX_FLAG);
 
     switch (this->timer) {
         case 119:
@@ -279,23 +279,23 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
             break;
 
         case 98:
-            func_800B7298(play, NULL, PLAYER_CSACTION_64);
+            Player_SetCsActionWithHaltedActors(play, NULL, PLAYER_CSACTION_64);
             break;
 
         case 68:
-            func_800B7298(play, NULL, PLAYER_CSACTION_65);
+            Player_SetCsActionWithHaltedActors(play, NULL, PLAYER_CSACTION_65);
             break;
 
         case 52:
-            func_800B7298(play, NULL, PLAYER_CSACTION_88);
+            Player_SetCsActionWithHaltedActors(play, NULL, PLAYER_CSACTION_88);
             break;
 
         case 43:
-            func_800B7298(play, NULL, PLAYER_CSACTION_114);
+            Player_SetCsActionWithHaltedActors(play, NULL, PLAYER_CSACTION_114);
             break;
 
         case 38:
-            func_800B7298(play, NULL, PLAYER_CSACTION_WAIT);
+            Player_SetCsActionWithHaltedActors(play, NULL, PLAYER_CSACTION_WAIT);
             break;
 
         case 14:
@@ -303,7 +303,7 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
             player->actor.world.pos = player->actor.home.pos = this->actor.home.pos;
             player->actor.shape.rot = this->actor.home.rot;
             player->actor.focus.rot.y = player->actor.shape.rot.y;
-            player->currentYaw = player->actor.shape.rot.y;
+            player->yaw = player->actor.shape.rot.y;
             player->unk_ABC = 0.0f;
             player->unk_AC0 = 0.0f;
             player->actor.shape.yOffset = 0.0f;
@@ -341,7 +341,7 @@ RECOMP_PATCH void EnTest6_DoubleSoTCutscene(EnTest6* this, PlayState* play) {
  * Processes two different cutscenes:
  * return to "Dawn of the First Day" Cs, and Song of Double Time Cs
  */
-RECOMP_PATCH void EnTest6_SharedSoTCutscene(EnTest6* this, PlayState* play) {
+void EnTest6_SharedSoTCutscene(EnTest6* this, PlayState* play) {
     s32 pad[2];
     Player* player = GET_PLAYER(play);
     f32 yDiff;
@@ -492,9 +492,8 @@ RECOMP_PATCH void EnTest6_SharedSoTCutscene(EnTest6* this, PlayState* play) {
                 return;
 
             case SOTCS_CUEID_DOUBLE_END:
-                Play_SetRespawnData(&play->state, RESPAWN_MODE_RETURN, ((void)0, gSaveContext.save.entrance),
-                                    player->unk_3CE, PLAYER_PARAMS(0xFF, PLAYER_INITMODE_B), &player->unk_3C0,
-                                    player->unk_3CC);
+                Play_SetRespawnData(play, RESPAWN_MODE_RETURN, ((void)0, gSaveContext.save.entrance), player->unk_3CE,
+                                    PLAYER_PARAMS(0xFF, PLAYER_START_MODE_B), &player->unk_3C0, player->unk_3CC);
                 this->drawType = SOTCS_DRAW_TYPE_NONE;
                 play->transitionTrigger = TRANS_TRIGGER_START;
                 play->nextEntrance = gSaveContext.respawn[RESPAWN_MODE_RETURN].entrance;
@@ -518,6 +517,7 @@ RECOMP_PATCH void EnTest6_SharedSoTCutscene(EnTest6* this, PlayState* play) {
                 this->clockColorGray = 38;
                 this->clockSpeed = 150.0f;
                 this->clockDist = 480.0f;
+                break;
 
             case SOTCS_CUEID_DOUBLE_WAIT:
                 break;
@@ -574,6 +574,17 @@ RECOMP_PATCH void EnTest6_SharedSoTCutscene(EnTest6* this, PlayState* play) {
 
             case SOTCS_CUEID_DOUBLE_END:
                 // @mod Replace DSoT functionality
+                // if (CURRENT_TIME > CLOCK_TIME(12, 0)) {
+                //     Play_SetRespawnData(play, RESPAWN_MODE_RETURN, ((void)0, gSaveContext.save.entrance),
+                //                         player->unk_3CE, PLAYER_PARAMS(0xFF, PLAYER_START_MODE_B), &player->unk_3C0,
+                //                         player->unk_3CC);
+                //     this->drawType = SOTCS_DRAW_TYPE_NONE;
+                //     play->transitionTrigger = TRANS_TRIGGER_START;
+                //     play->nextEntrance = gSaveContext.respawn[RESPAWN_MODE_RETURN].entrance;
+                //     play->transitionType = TRANS_TYPE_FADE_BLACK;
+                //     gSaveContext.respawnFlag = 2;
+                //     play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+                // }
                 return;
         }
     }

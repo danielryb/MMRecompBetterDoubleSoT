@@ -1,52 +1,13 @@
 #include "modding.h"
 #include "better_double_sot.h"
 
-RECOMP_IMPORT("mm_message_hooks", void set_return_flag(void))
+RECOMP_IMPORT("mm_recomp_message_hooks", void set_return_flag(void))
 
 extern u8 D_801C6A70;
 
 extern s32 sCharTexSize;
 extern s32 sCharTexScale;
 extern s32 D_801F6B08;
-
-typedef enum {
-    /* 0 */ PAUSE_ITEM,
-    /* 1 */ PAUSE_MAP,
-    /* 2 */ PAUSE_QUEST,
-    /* 3 */ PAUSE_MASK,
-    /* 4 */ PAUSE_WORLD_MAP
-} PauseMenuPage;
-
-typedef enum {
-    /* 0x00 */ PAUSE_STATE_OFF,
-    /* 0x01 */ PAUSE_STATE_OPENING_0,
-    /* 0x02 */ PAUSE_STATE_OPENING_1,
-    /* 0x03 */ PAUSE_STATE_OPENING_2,
-    /* 0x04 */ PAUSE_STATE_OPENING_3,
-    /* 0x05 */ PAUSE_STATE_OPENING_4,
-    /* 0x06 */ PAUSE_STATE_MAIN, // Pause menu ready for player inputs.
-    /* 0x07 */ PAUSE_STATE_SAVEPROMPT,
-    /* 0x08 */ PAUSE_STATE_GAMEOVER_0,
-    /* 0x09 */ PAUSE_STATE_GAMEOVER_1,
-    /* 0x0A */ PAUSE_STATE_GAMEOVER_2,
-    /* 0x0B */ PAUSE_STATE_GAMEOVER_3,
-    /* 0x0C */ PAUSE_STATE_GAMEOVER_4,
-    /* 0x0D */ PAUSE_STATE_GAMEOVER_5,
-    /* 0x0E */ PAUSE_STATE_GAMEOVER_SAVE_PROMPT,
-    /* 0x0F */ PAUSE_STATE_GAMEOVER_7,
-    /* 0x10 */ PAUSE_STATE_GAMEOVER_8,
-    /* 0x11 */ PAUSE_STATE_GAMEOVER_CONTINUE_PROMPT,
-    /* 0x12 */ PAUSE_STATE_GAMEOVER_10,
-    /* 0x13 */ PAUSE_STATE_OWL_WARP_0,
-    /* 0x14 */ PAUSE_STATE_OWL_WARP_1,
-    /* 0x15 */ PAUSE_STATE_OWL_WARP_2,
-    /* 0x16 */ PAUSE_STATE_OWL_WARP_3,
-    /* 0x17 */ PAUSE_STATE_OWL_WARP_SELECT, // Selecting the destination
-    /* 0x18 */ PAUSE_STATE_OWL_WARP_CONFIRM, // Confirming the choice given
-    /* 0x19 */ PAUSE_STATE_OWL_WARP_6,
-    /* 0x1A */ PAUSE_STATE_UNPAUSE_SETUP, // Unpause
-    /* 0x1B */ PAUSE_STATE_UNPAUSE_CLOSE
-} PauseState;
 
 extern s16 sLastPlayedSong;
 
@@ -68,17 +29,15 @@ bool Message_ShouldAdvanceSilent(PlayState* play);
 void ShrinkWindow_Letterbox_SetSizeTarget(s32 target);
 s32 ShrinkWindow_Letterbox_GetSizeTarget(void);
 
-extern bool skip_dsot_cutscene;
-
-RECOMP_CALLBACK("mm_message_hooks", on_Message_Update) void on_Message_Update(PlayState* play) {
+RECOMP_CALLBACK("mm_recomp_message_hooks", on_Message_Update) void on_Message_Update(PlayState* play) {
     MessageContext* msgCtx = &play->msgCtx;
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
 
     // Overtake dsot processing.
     switch(msgCtx->msgMode) {
         case MSGMODE_TEXT_DONE:
-            if ((msgCtx->textboxEndType == TEXTBOX_ENDTYPE_10)
-            && (play->msgCtx.ocarinaMode == OCARINA_MODE_PROCESS_DOUBLE_TIME)) {
+            if ((msgCtx->textboxEndType == TEXTBOX_ENDTYPE_TWO_CHOICE) &&
+                (play->msgCtx.ocarinaMode == OCARINA_MODE_PROCESS_DOUBLE_TIME)) {
                 Message_HandleChoiceSelection(play, 1);
 
                 // Replace DSoT functionality.
@@ -110,9 +69,9 @@ RECOMP_CALLBACK("mm_message_hooks", on_Message_Update) void on_Message_Update(Pl
             break;
 
         case MSGMODE_TEXT_CLOSING:
-            if ((msgCtx->stateTimer == 1)
-            && (msgCtx->ocarinaAction != OCARINA_ACTION_CHECK_NOTIME_DONE)
-            && (sLastPlayedSong == OCARINA_SONG_DOUBLE_TIME)) {
+            if ((msgCtx->stateTimer == 1) &&
+                (msgCtx->ocarinaAction != OCARINA_ACTION_CHECK_NOTIME_DONE) &&
+                (sLastPlayedSong == OCARINA_SONG_DOUBLE_TIME)) {
                 if (interfaceCtx->restrictions.songOfDoubleTime == 0) {
                     // Adjust variables to match vanilla behaviour
                     msgCtx->stateTimer--;
@@ -135,7 +94,7 @@ RECOMP_CALLBACK("mm_message_hooks", on_Message_Update) void on_Message_Update(Pl
                     msgCtx->stateTimer = 0;
                     XREG(31) = 0;
 
-                    msgCtx->textboxEndType = TEXTBOX_ENDTYPE_00;
+                    msgCtx->textboxEndType = TEXTBOX_ENDTYPE_DEFAULT;
 
                     // Replace DSoT functionality.
                     if ((CURRENT_DAY != 3) || (CURRENT_TIME < CLOCK_TIME(5, 0)) || (CURRENT_TIME >= CLOCK_TIME(6, 0))) {
