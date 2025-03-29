@@ -1,14 +1,12 @@
 #include "better_double_sot.h"
 
-#include "modding.h"
-
 void dsot_load_day_number_texture(PlayState* play, s32 day);
 
 static void dsot_rain_fix(PlayState* play);
 static void dsot_bgm_fix(PlayState* play);
 static void dsot_actor_fixes(PlayState* play);
 
-bool skip_dsot_cutscene = false;
+int skip_dsot_cutscene = -1;
 
 // @mod_export void dsot_set_skip_dsot_cutscene(bool new_val): Set whether the DSoT cutscene should be skipped.
 RECOMP_EXPORT void dsot_set_skip_dsot_cutscene(bool new_val) {
@@ -35,12 +33,23 @@ void dsot_init_hour_selection(PlayState* play) {
 #define TIMER_STEP_RESET 0
 
 void dsot_handle_hour_selection(PlayState* play) {
-    static s8 sAnalogStickTimer = TIMER_INIT;
-    static s8 sPrevStickX = 0;
+    static s8 sInputTimer = TIMER_INIT;
+    static s8 sPrevInputVector = 0;
     static bool sAnalogStickHeld = false;
     Input* input = CONTROLLER1(&play->state);
 
-    if ((input->rel.stick_x >= 30) && !sAnalogStickHeld) {
+    s8 inputVector = (
+        (CFG_ANALOG_INPUT_ALLOWED && (input->rel.stick_x >= 30)) ||
+        (CFG_DPAD_INPUT_ALLOWED && CHECK_BTN_ANY(input->cur.button, BTN_DRIGHT)) ||
+        (CFG_ZR_INPUT_ALLOWED && CHECK_BTN_ANY(input->cur.button, BTN_R))
+    );
+    inputVector -= (
+        (CFG_ANALOG_INPUT_ALLOWED && (input->rel.stick_x <= -30)) ||
+        (CFG_DPAD_INPUT_ALLOWED && CHECK_BTN_ANY(input->cur.button, BTN_DLEFT)) ||
+        (CFG_ZR_INPUT_ALLOWED && CHECK_BTN_ANY(input->cur.button, BTN_Z))
+    );
+
+    if (inputVector > 0 && !sAnalogStickHeld) {
         u8 prevHour = choiceHour;
         sAnalogStickHeld = true;
 
@@ -60,7 +69,7 @@ void dsot_handle_hour_selection(PlayState* play) {
         if ((choiceHour == 6) && (choiceHour > prevHour)) {
             dsot_load_day_number_texture(play, gSaveContext.save.day + 1);
         }
-    } else if ((input->rel.stick_x <= -30) && !sAnalogStickHeld) {
+    } else if (inputVector < 0 && !sAnalogStickHeld) {
         u8 prevHour = choiceHour;
         sAnalogStickHeld = true;
 
@@ -81,24 +90,24 @@ void dsot_handle_hour_selection(PlayState* play) {
         if ((prevHour == 6) && (choiceHour < prevHour)) {
             dsot_load_day_number_texture(play, gSaveContext.save.day);
         }
-    } else if (ABS_ALT(input->rel.stick_x) < 30) {
+    } else if (inputVector == 0) {
         sAnalogStickHeld = false;
-        sAnalogStickTimer = TIMER_INIT;
+        sInputTimer = TIMER_INIT;
     }
 
-    if (ABS_ALT(input->rel.stick_x) >= 30) {
-        if (!DECR(sAnalogStickTimer)) {
+    if (inputVector != 0) {
+        if (!DECR(sInputTimer)) {
             sAnalogStickHeld = false;
-            sAnalogStickTimer = TIMER_STEP_RESET;
+            sInputTimer = TIMER_STEP_RESET;
         }
     }
 
-    if (sPrevStickX * input->rel.stick_x < 0) {
+    if (sPrevInputVector * inputVector < 0) {
         sAnalogStickHeld = false;
-        sAnalogStickTimer = TIMER_INIT;
+        sInputTimer = TIMER_INIT;
     }
 
-    sPrevStickX = input->rel.stick_x;
+    sPrevInputVector = inputVector;
 }
 
 void dsot_cancel_hour_selection(PlayState* play) {

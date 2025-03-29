@@ -1,7 +1,7 @@
 #include "modding.h"
 #include "better_double_sot.h"
 
-RECOMP_IMPORT("mm_recomp_message_hooks", void set_return_flag(void))
+RECOMP_IMPORT("mm_recomp_message_hooks", void mh_Message_Update_set_return_flag(void))
 
 extern u8 D_801C6A70;
 
@@ -29,7 +29,7 @@ bool Message_ShouldAdvanceSilent(PlayState* play);
 void ShrinkWindow_Letterbox_SetSizeTarget(s32 target);
 s32 ShrinkWindow_Letterbox_GetSizeTarget(void);
 
-RECOMP_CALLBACK("mm_recomp_message_hooks", on_Message_Update) void on_Message_Update(PlayState* play) {
+RECOMP_CALLBACK("mm_recomp_message_hooks", mh_on_Message_Update) void mh_on_Message_Update(PlayState* play) {
     MessageContext* msgCtx = &play->msgCtx;
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
 
@@ -48,7 +48,7 @@ RECOMP_CALLBACK("mm_recomp_message_hooks", on_Message_Update) void on_Message_Up
                         Audio_PlaySfx_MessageDecide();
 
                         // @mod_use_export_var skip_dsot_cutscene: Skip DSoT cutscene if other mods enable it.
-                        if (skip_dsot_cutscene) {
+                        if ((skip_dsot_cutscene > 0) || ((skip_dsot_cutscene == -1) && CGF_SKIP_DSOT_CUTSCENE)) {
                             play->msgCtx.ocarinaMode = OCARINA_MODE_END;
                             dsot_advance_hour(play);
                         } else {
@@ -64,7 +64,7 @@ RECOMP_CALLBACK("mm_recomp_message_hooks", on_Message_Update) void on_Message_Up
                     Message_CloseTextbox(play);
                 }
 
-                set_return_flag();
+                mh_Message_Update_set_return_flag();
             }
             break;
 
@@ -139,7 +139,7 @@ RECOMP_CALLBACK("mm_recomp_message_hooks", on_Message_Update) void on_Message_Up
                         play->msgCtx.ocarinaMode = OCARINA_MODE_END;
                     }
 
-                    set_return_flag();
+                    mh_Message_Update_set_return_flag();
                 } else {
                     // sLastPlayedSong = 0xFF;
                     Message_StartTextbox(play, 0x1B95, NULL);

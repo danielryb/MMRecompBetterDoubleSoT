@@ -15,7 +15,7 @@ display_name = "Better Song of Double Time"
 
 # The description that will show up when this mod is displayed in the mod menu. This should be human readable.
 description =  """
-Adds hour selection for Song of Double Time."""
+This mod adds hour selection for Song of Double Time."""
 
 # A short description that will show up in this mod's entry in the mod list. This should be human readable and kept short
 # to prevent it from being cut off due to the limited space.
@@ -56,3 +56,54 @@ data_reference_syms_files = [ "Zelda64RecompSyms/mm.us.rev1.datasyms.toml", "Zel
 
 # Additional files to include in the mod.
 additional_files = [ ]
+
+
+## Config options:
+
+[[manifest.config_options]]
+id = "accept_analog_input"
+name = "Accept Analog Stick Input"
+description = """Enables input from analog stick's X-axis (left and right) during the hour selection.
+"""
+type = "Enum"
+options = [
+    "on",
+    "off"
+]
+default = "on"
+
+[[manifest.config_options]]
+id = "accept_dpad_input"
+name = "Accept D-Pad Input"
+description = """Enables input from D-pad left (special item 2) and right (special item 4) buttons during the hour selection.
+"""
+type = "Enum"
+options = [
+    "on",
+    "off"
+]
+default = "on"
+
+[[manifest.config_options]]
+id = "accept_zr_input"
+name = "Accept Z/R Input"
+description = """Enables input from Z (target) and R (shield) buttons during the hour selection.
+"""
+type = "Enum"
+options = [
+    "on",
+    "off"
+]
+default = "on"
+
+[[manifest.config_options]]
+id = "skip_dsot_cutscene"
+name = "Skip Cutscene"
+description = """Disables the Song of Double Time cutscene.
+"""
+type = "Enum"
+options = [
+    "on",
+    "off"
+]
+default = "off"
