@@ -29,7 +29,7 @@ bool Message_ShouldAdvanceSilent(PlayState* play);
 void ShrinkWindow_Letterbox_SetSizeTarget(s32 target);
 s32 ShrinkWindow_Letterbox_GetSizeTarget(void);
 
-RECOMP_CALLBACK("mm_recomp_message_hooks", mh_on_Message_Update) void mh_on_Message_Update(PlayState* play) {
+RECOMP_CALLBACK("mm_recomp_message_hooks", mh_on_Message_Update) void on_Message_Update(PlayState* play) {
     MessageContext* msgCtx = &play->msgCtx;
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
 
