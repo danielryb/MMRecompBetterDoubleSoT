@@ -191,6 +191,8 @@ bool is_on_respawn_blacklist(s16 actor_id) {
         case ACTOR_PLAYER:
         case ACTOR_EN_TEST3:
 
+        case ACTOR_EN_DOOR:
+
         case ACTOR_EN_TEST4:
         case ACTOR_OBJ_TOKEI_STEP:
         case ACTOR_OBJ_TOKEIDAI:
