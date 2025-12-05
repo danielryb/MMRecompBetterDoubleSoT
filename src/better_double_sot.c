@@ -19,13 +19,13 @@ RECOMP_EXPORT void dsot_set_time(PlayState* play, s32 day, u16 time) {
     set_time(play, day, time);
 }
 
-bool custom_blacklisted;
+bool custom_whitelisted;
 
-RECOMP_EXPORT void dsot_set_blacklist_true(void) {
-    custom_blacklisted = true;
+RECOMP_EXPORT void dsot_set_whitelist_true(void) {
+    custom_whitelisted = true;
 }
 
-RECOMP_DECLARE_EVENT(dsot_on_blacklist_check(s16 actor_id))
+RECOMP_DECLARE_EVENT(dsot_on_whitelist_check(s16 actor_id))
 
 static u8 choiceHour;
 
@@ -194,33 +194,27 @@ void Actor_InitHalfDaysBit(ActorContext* actorCtx);
 void Actor_KillAllOnHalfDayChange(PlayState* play, ActorContext* actorCtx);
 Actor* Actor_SpawnEntry(ActorContext* actorCtx, ActorEntry* actorEntry, PlayState* play);
 
-bool is_on_respawn_blacklist(s16 actor_id) {
+bool is_on_respawn_whitelist(s16 actor_id) {
     switch (actor_id) {
-        case ACTOR_PLAYER:
-        case ACTOR_EN_TEST3:
-
-        case ACTOR_EN_DOOR:
-
-        case ACTOR_EN_TEST4:
-        case ACTOR_OBJ_TOKEI_STEP:
-        case ACTOR_OBJ_TOKEIDAI:
+        case ACTOR_EN_MA4:
+        case ACTOR_EN_DAIKU2:
             return true;
     }
 
-    custom_blacklisted = false;
-    dsot_on_blacklist_check(actor_id);
+    custom_whitelisted = false;
+    dsot_on_whitelist_check(actor_id);
 
-    return custom_blacklisted;
+    return custom_whitelisted;
 }
 
-void kill_all_setup_actors(PlayState* play, ActorContext* actorCtx) {
+void kill_whitelisted_setup_actors(PlayState* play, ActorContext* actorCtx) {
     s32 category;
 
     for (category = 0; category < ACTORCAT_MAX; category++) {
         Actor* actor = actorCtx->actorLists[category].first;
 
         while (actor != NULL) {
-            if (!is_on_respawn_blacklist(actor->id)) {
+            if (is_on_respawn_whitelist(actor->id)) {
                 func_80123590(play, actor);
 
                 if (!actor->isDrawn) {
@@ -251,8 +245,8 @@ void respawn_setup_actors(PlayState* play, ActorContext* actorCtx) {
     s32 i;
 
     Actor_InitHalfDaysBit(actorCtx);
-    // Actor_KillAllOnHalfDayChange(play, &play->actorCtx);
-    kill_all_setup_actors(play, &play->actorCtx);
+    Actor_KillAllOnHalfDayChange(play, &play->actorCtx);
+    kill_whitelisted_setup_actors(play, &play->actorCtx);
 
     for (i = 0; i < play->numSetupActors; i++) {
         actorEntryHalfDayBit = ((actorEntry->rot.x & 7) << 7) | (actorEntry->rot.z & 0x7F);
@@ -260,13 +254,18 @@ void respawn_setup_actors(PlayState* play, ActorContext* actorCtx) {
             actorEntryHalfDayBit = HALFDAYBIT_ALL;
         }
 
-        if (!is_on_respawn_blacklist(actorEntry->id) &&
-            (actorEntryHalfDayBit & actorCtx->halfDaysBit) &&
-            (!CHECK_EVENTINF(EVENTINF_17) || !(actorEntryHalfDayBit & prevHalfDaysBitValue) ||
-            !(actorEntry->id & 0x800))) {
+        bool respawn_whitelisted =
+            (is_on_respawn_whitelist(actorEntry->id) && (actorEntryHalfDayBit & actorCtx->halfDaysBit));
 
+        bool spawn_new =
+            (!(actorEntryHalfDayBit & prevHalfDaysBitValue) && (actorEntryHalfDayBit & actorCtx->halfDaysBit) &&
+            (!CHECK_EVENTINF(EVENTINF_17) || !(actorEntryHalfDayBit & prevHalfDaysBitValue) ||
+                !(actorEntry->id & 0x800)));
+
+        if (respawn_whitelisted || spawn_new) {
             Actor_SpawnEntry(&play->actorCtx, actorEntry, play);
         }
+
         actorEntry++;
     }
 
@@ -344,6 +343,7 @@ void set_time(PlayState* play, s32 day, u16 time) {
 
 void dsot_advance_hour(PlayState* play) {
     set_time(play, CURRENT_DAY, CLOCK_TIME(choiceHour, 0));
+    // set_time(play, 3, CLOCK_TIME(choiceHour, 0));
 }
 
 static void dsot_rain_fix(PlayState* play) {
