@@ -19,6 +19,14 @@ RECOMP_EXPORT void dsot_set_time(PlayState* play, s32 day, u16 time) {
     set_time(play, day, time);
 }
 
+bool custom_blacklisted;
+
+RECOMP_EXPORT void dsot_set_blacklist_true(void) {
+    custom_blacklisted = true;
+}
+
+RECOMP_DECLARE_EVENT(dsot_on_blacklist_check(s16 actor_id))
+
 static u8 choiceHour;
 
 void dsot_init_hour_selection(PlayState* play) {
@@ -198,7 +206,11 @@ bool is_on_respawn_blacklist(s16 actor_id) {
         case ACTOR_OBJ_TOKEIDAI:
             return true;
     }
-    return false;
+
+    custom_blacklisted = false;
+    dsot_on_blacklist_check(actor_id);
+
+    return custom_blacklisted;
 }
 
 void kill_all_setup_actors(PlayState* play, ActorContext* actorCtx) {
