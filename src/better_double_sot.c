@@ -347,20 +347,19 @@ void dsot_advance_hour(PlayState* play) {
 }
 
 static void dsot_rain_fix(PlayState* play) {
-    if ((CURRENT_DAY == 2) && (Environment_GetStormState(play) != STORM_STATE_OFF)) {
-        if ((CURRENT_TIME >= CLOCK_TIME(8, 0)) && (CURRENT_TIME < CLOCK_TIME(18, 00))) {
-            gWeatherMode = WEATHER_MODE_RAIN;
-            play->envCtx.lightningState = LIGHTNING_ON;
-            play->envCtx.precipitation[PRECIP_RAIN_MAX] = 60;
-            play->envCtx.precipitation[PRECIP_RAIN_CUR] = 60;
-            Environment_PlayStormNatureAmbience(play);
-        } else {
-            gWeatherMode = WEATHER_MODE_CLEAR;
-            play->envCtx.lightningState = LIGHTNING_OFF;
-            play->envCtx.precipitation[PRECIP_RAIN_MAX] = 0;
-            play->envCtx.precipitation[PRECIP_RAIN_CUR] = 0;
-            Environment_StopStormNatureAmbience(play);
-        }
+    if ((CURRENT_DAY == 2) && (Environment_GetStormState(play) != STORM_STATE_OFF) &&
+        (CURRENT_TIME >= CLOCK_TIME(8, 0)) && (CURRENT_TIME < CLOCK_TIME(18, 00))) {
+        gWeatherMode = WEATHER_MODE_RAIN;
+        play->envCtx.lightningState = LIGHTNING_ON;
+        play->envCtx.precipitation[PRECIP_RAIN_MAX] = 60;
+        play->envCtx.precipitation[PRECIP_RAIN_CUR] = 60;
+        Environment_PlayStormNatureAmbience(play);
+    } else {
+        gWeatherMode = WEATHER_MODE_CLEAR;
+        play->envCtx.lightningState = LIGHTNING_OFF;
+        play->envCtx.precipitation[PRECIP_RAIN_MAX] = 0;
+        play->envCtx.precipitation[PRECIP_RAIN_CUR] = 0;
+        Environment_StopStormNatureAmbience(play);
     }
 }
 
