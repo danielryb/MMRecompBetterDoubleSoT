@@ -13,6 +13,12 @@ RECOMP_EXPORT void dsot_set_skip_dsot_cutscene(bool new_val) {
     skip_dsot_cutscene = new_val;
 }
 
+void set_time(PlayState* play, s32 day, u16 time);
+
+RECOMP_EXPORT void dsot_set_time(PlayState* play, s32 day, u16 time) {
+    set_time(play, day, time);
+}
+
 static u8 choiceHour;
 
 void dsot_init_hour_selection(PlayState* play) {
@@ -173,13 +179,157 @@ void dsot_draw_clock(PlayState* play) {
     msgCtx->msgMode = prev_msgMode;
 }
 
-void dsot_advance_hour(PlayState* play) {
-    gSaveContext.save.time = CLOCK_TIME(choiceHour, 0);
+Actor* Actor_Delete(ActorContext* actorCtx, Actor* actor, PlayState* play);
+void Actor_Destroy(Actor* actor, PlayState* play);
+
+void Actor_InitHalfDaysBit(ActorContext* actorCtx);
+void Actor_KillAllOnHalfDayChange(PlayState* play, ActorContext* actorCtx);
+Actor* Actor_SpawnEntry(ActorContext* actorCtx, ActorEntry* actorEntry, PlayState* play);
+
+bool is_on_respawn_blacklist(s16 actor_id) {
+    switch (actor_id) {
+        case ACTOR_PLAYER:
+        case ACTOR_EN_TEST3:
+
+        case ACTOR_EN_TEST4:
+        case ACTOR_OBJ_TOKEI_STEP:
+        case ACTOR_OBJ_TOKEIDAI:
+            return true;
+    }
+    return false;
+}
+
+void kill_all_setup_actors(PlayState* play, ActorContext* actorCtx) {
+    s32 category;
+
+    for (category = 0; category < ACTORCAT_MAX; category++) {
+        Actor* actor = actorCtx->actorLists[category].first;
+
+        while (actor != NULL) {
+            if (!is_on_respawn_blacklist(actor->id)) {
+                func_80123590(play, actor);
+
+                if (!actor->isDrawn) {
+                    actor = Actor_Delete(actorCtx, actor, play);
+                } else {
+                    Actor_Kill(actor);
+                    Actor_Destroy(actor, play);
+                    actor = actor->next;
+                }
+            } else {
+                actor = actor->next;
+            }
+        }
+    }
+
+    CollisionCheck_ClearContext(play, &play->colChkCtx);
+    play->msgCtx.unk_12030 = 0;
+}
+
+void respawn_setup_actors(PlayState* play, ActorContext* actorCtx) {
+    if (play->numSetupActors < 0) {
+        play->numSetupActors = -play->numSetupActors;
+    }
+
+    ActorEntry* actorEntry = play->setupActorList;
+    s32 prevHalfDaysBitValue = actorCtx->halfDaysBit;
+    s32 actorEntryHalfDayBit;
+    s32 i;
+
+    Actor_InitHalfDaysBit(actorCtx);
+    // Actor_KillAllOnHalfDayChange(play, &play->actorCtx);
+    kill_all_setup_actors(play, &play->actorCtx);
+
+    for (i = 0; i < play->numSetupActors; i++) {
+        actorEntryHalfDayBit = ((actorEntry->rot.x & 7) << 7) | (actorEntry->rot.z & 0x7F);
+        if (actorEntryHalfDayBit == 0) {
+            actorEntryHalfDayBit = HALFDAYBIT_ALL;
+        }
+
+        if (!is_on_respawn_blacklist(actorEntry->id) &&
+            (actorEntryHalfDayBit & actorCtx->halfDaysBit) &&
+            (!CHECK_EVENTINF(EVENTINF_17) || !(actorEntryHalfDayBit & prevHalfDaysBitValue) ||
+            !(actorEntry->id & 0x800))) {
+
+            Actor_SpawnEntry(&play->actorCtx, actorEntry, play);
+        }
+        actorEntry++;
+    }
+
+    // Prevents re-spawning the setup actors
+    play->numSetupActors = -play->numSetupActors;
+}
+
+Actor* Actor_RemoveFromCategory(PlayState* play, ActorContext* actorCtx, Actor* actorToRemove);
+void Actor_AddToCategory(ActorContext* actorCtx, Actor* actor, u8 actorCategory);
+
+void update_actor_categories(PlayState*play, ActorContext* actorCtx) {
+    s32 category;
+    Actor* actor;
+    Player* player = GET_PLAYER(play);
+    u32* categoryFreezeMaskP;
+    s32 newCategory;
+    Actor* next;
+    ActorListEntry* entry;
+
+    // Move actors to a different actorList if it has changed categories.
+    for (category = 0, entry = actorCtx->actorLists; category < ACTORCAT_MAX; entry++, category++) {
+        if (entry->categoryChanged) {
+            actor = entry->first;
+
+            while (actor != NULL) {
+                if (actor->category == category) {
+                    // The actor category matches the list category. No change needed.
+                    actor = actor->next;
+                    continue;
+                }
+
+                // The actor category does not match the list category and needs to be moved.
+                next = actor->next;
+                newCategory = actor->category;
+                actor->category = category;
+                Actor_RemoveFromCategory(play, actorCtx, actor);
+                Actor_AddToCategory(actorCtx, actor, newCategory);
+                actor = next;
+            }
+            entry->categoryChanged = false;
+        }
+    }
+}
+
+void Actor_SpawnSetupActors(PlayState* play, ActorContext* actorCtx);
+
+void set_time(PlayState* play, s32 day, u16 time) {
+    bool prevIsNight = gSaveContext.save.isNight;
+
+    gSaveContext.save.time = time;
     gSaveContext.skyboxTime = CURRENT_TIME;
+    gSaveContext.save.isNight = ((CURRENT_TIME < CLOCK_TIME(6, 0)) || (CURRENT_TIME > CLOCK_TIME(18, 0)));
+
+    if (CURRENT_DAY != day) {
+        Sram_IncrementDay();
+        gSaveContext.save.day = day;
+        gSaveContext.save.eventDayCount = gSaveContext.save.day;
+
+        Interface_NewDay(play, CURRENT_DAY);
+        Environment_NewDay(&play->envCtx);
+
+        respawn_setup_actors(play, &play->actorCtx);
+        update_actor_categories(play, &play->actorCtx);
+        DynaPoly_UpdateBgActorTransforms(play, &play->colCtx.dyna);
+    } else if (prevIsNight != gSaveContext.save.isNight) {
+        if (play->numSetupActors < 0) {
+            play->numSetupActors = -play->numSetupActors;
+        }
+    }
 
     dsot_rain_fix(play);
     dsot_bgm_fix(play);
     dsot_actor_fixes(play);
+}
+
+void dsot_advance_hour(PlayState* play) {
+    set_time(play, CURRENT_DAY, CLOCK_TIME(choiceHour, 0));
 }
 
 static void dsot_rain_fix(PlayState* play) {
@@ -227,6 +377,13 @@ static void dsot_bgm_fix(PlayState* play) {
         Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_1 << 4 | AMBIENCE_CHANNEL_CRITTER_3, 1, 0);
         Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_4 << 4 | AMBIENCE_CHANNEL_CRITTER_5, 1, 1);
         play->envCtx.timeSeqState = TIMESEQ_DAY_DELAY;
+    }
+
+    // BGM fix for instant day skip
+    u8 dayMinusOne = ((void)0, gSaveContext.save.day) - 1;
+    if ((CURRENT_TIME >= CLOCK_TIME(6, 0)) && (CURRENT_TIME <= CLOCK_TIME(17, 10))) {
+        Audio_PlaySceneSequence(play->sceneSequences.seqId, dayMinusOne);
+        play->envCtx.timeSeqState = TIMESEQ_FADE_DAY_BGM;
     }
 }
 
@@ -280,8 +437,6 @@ void dsot_ObjEnTest4_fix(EnTest4* this, PlayState* play) {
     // Change daytime to night manually if necessary.
     if (((this->daytimeIndex = THREEDAY_DAYTIME_DAY) && (CURRENT_TIME > CLOCK_TIME(18, 0))) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
         this->daytimeIndex = THREEDAY_DAYTIME_NIGHT;
-        // Re-spawn the setup actors.
-        play->numSetupActors = -play->numSetupActors;
     }
 
     // Setup next bell time.
