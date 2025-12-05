@@ -330,6 +330,13 @@ void set_time(PlayState* play, s32 day, u16 time) {
         respawn_setup_actors(play, &play->actorCtx);
         update_actor_categories(play, &play->actorCtx);
         DynaPoly_UpdateBgActorTransforms(play, &play->colCtx.dyna);
+
+        // BGM fix
+        u8 seqId = play->sceneSequences.seqId;
+        if (seqId == 29) {
+            u8 dayMinusOne = ((void)0, gSaveContext.save.day) - 1;
+            Audio_PlaySceneSequence(seqId, dayMinusOne);
+        }
     } else if (prevIsNight != gSaveContext.save.isNight) {
         if (play->numSetupActors < 0) {
             play->numSetupActors = -play->numSetupActors;
@@ -343,7 +350,6 @@ void set_time(PlayState* play, s32 day, u16 time) {
 
 void dsot_advance_hour(PlayState* play) {
     set_time(play, CURRENT_DAY, CLOCK_TIME(choiceHour, 0));
-    // set_time(play, 3, CLOCK_TIME(choiceHour, 0));
 }
 
 static void dsot_rain_fix(PlayState* play) {
@@ -363,40 +369,67 @@ static void dsot_rain_fix(PlayState* play) {
     }
 }
 
+typedef struct {
+    /* 0x0 */ u8 scene;
+    /* 0x1 */ u8 flags1;
+    /* 0x2 */ u8 flags2;
+    /* 0x3 */ u8 flags3;
+} RestrictionFlags;
+
+extern RestrictionFlags sRestrictionFlags[];
+
+#define RESTRICTIONS_TABLE_END 0xFF
+#define RESTRICTIONS_GET_BITS(flags, s) (((flags) & (3 << (s))) >> (s))
+#define RESTRICTIONS_GET_SONG_OF_DOUBLE_TIME(flags) RESTRICTIONS_GET_BITS((flags)->flags2, 4)
+
+u8 get_dsot_restrictions(PlayState* play) {
+    u8 dsot_restrictions = 0;
+
+    InterfaceContext* interfaceCtx = &play->interfaceCtx;
+    s16 i = 0;
+    u8 currentScene;
+
+    do {
+        currentScene = (u8)play->sceneId;
+        if (currentScene == sRestrictionFlags[i].scene) {
+            dsot_restrictions = RESTRICTIONS_GET_SONG_OF_DOUBLE_TIME(&sRestrictionFlags[i]);
+            break;
+        }
+        i++;
+    } while (sRestrictionFlags[i].scene != RESTRICTIONS_TABLE_END);
+
+    return dsot_restrictions;
+}
+
 static void dsot_bgm_fix(PlayState* play) {
-    play->envCtx.timeSeqState = TIMESEQ_FADE_DAY_BGM;
-
-    if ((CURRENT_TIME >= CLOCK_TIME(18, 0)) || (CURRENT_TIME <= CLOCK_TIME(6,0))) {
-        SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
-        play->envCtx.timeSeqState = TIMESEQ_NIGHT_BEGIN_SFX;
-    } else if (CURRENT_TIME > CLOCK_TIME(17, 10)) {
-        SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 240);
-        play->envCtx.timeSeqState = TIMESEQ_NIGHT_BEGIN_SFX;
-    }
-
-    if ((CURRENT_TIME >= CLOCK_TIME(18, 0)) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
-        Audio_PlayAmbience(play->sceneSequences.ambienceId);
-        Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_0, 1, 1);
-        play->envCtx.timeSeqState = TIMESEQ_NIGHT_DELAY;
-    }
-
-    if ((CURRENT_TIME >= CLOCK_TIME(19, 0)) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
-        Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_0, 1, 0);
-        Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_1 << 4 | AMBIENCE_CHANNEL_CRITTER_3, 1, 1);
-        play->envCtx.timeSeqState = TIMESEQ_DAY_BEGIN_SFX;
-    }
-
-    if ((CURRENT_TIME >= CLOCK_TIME(5, 0)) && (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
-        Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_1 << 4 | AMBIENCE_CHANNEL_CRITTER_3, 1, 0);
-        Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_4 << 4 | AMBIENCE_CHANNEL_CRITTER_5, 1, 1);
-        play->envCtx.timeSeqState = TIMESEQ_DAY_DELAY;
-    }
-
-    // BGM fix for instant day skip
-    u8 dayMinusOne = ((void)0, gSaveContext.save.day) - 1;
-    if ((CURRENT_TIME >= CLOCK_TIME(6, 0)) && (CURRENT_TIME <= CLOCK_TIME(17, 10))) {
-        Audio_PlaySceneSequence(play->sceneSequences.seqId, dayMinusOne);
+    if (!get_dsot_restrictions(play)) {
         play->envCtx.timeSeqState = TIMESEQ_FADE_DAY_BGM;
+
+        if ((CURRENT_TIME >= CLOCK_TIME(18, 0)) || (CURRENT_TIME <= CLOCK_TIME(6,0))) {
+            SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
+            play->envCtx.timeSeqState = TIMESEQ_NIGHT_BEGIN_SFX;
+        } else if (CURRENT_TIME > CLOCK_TIME(17, 10)) {
+            SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 240);
+            play->envCtx.timeSeqState = TIMESEQ_NIGHT_BEGIN_SFX;
+        }
+
+        if ((CURRENT_TIME >= CLOCK_TIME(18, 0)) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
+            Audio_PlayAmbience(play->sceneSequences.ambienceId);
+            Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_0, 1, 1);
+            play->envCtx.timeSeqState = TIMESEQ_NIGHT_DELAY;
+        }
+
+        if ((CURRENT_TIME >= CLOCK_TIME(19, 0)) || (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
+            Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_0, 1, 0);
+            Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_1 << 4 | AMBIENCE_CHANNEL_CRITTER_3, 1, 1);
+            play->envCtx.timeSeqState = TIMESEQ_DAY_BEGIN_SFX;
+        }
+
+        if ((CURRENT_TIME >= CLOCK_TIME(5, 0)) && (CURRENT_TIME <= CLOCK_TIME(6, 0))) {
+            Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_1 << 4 | AMBIENCE_CHANNEL_CRITTER_3, 1, 0);
+            Audio_SetAmbienceChannelIO(AMBIENCE_CHANNEL_CRITTER_4 << 4 | AMBIENCE_CHANNEL_CRITTER_5, 1, 1);
+            play->envCtx.timeSeqState = TIMESEQ_DAY_DELAY;
+        }
     }
 }
 
